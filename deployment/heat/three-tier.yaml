@@ -1,0 +1,398 @@
+heat_template_version: 2013-05-23
+
+description: Heat template for a three tier deployment
+
+parameters:
+  satellite_fqdn:
+    type: string
+    label: Satellite FQDN
+    description: Fully qualified domain name for the Satellite server
+    default: satellite.example.com
+  satellite_org:
+    type: string
+    label: Satellite Organization
+    description: Satellite Organization
+    default: default
+  satellite_key:
+    type: string
+    label: Satellite Activation Key
+    description: Satellite Activation Key
+  puppet_environment:
+    type: string
+    label: Puppet Environment
+    description: Puppet Environment
+    default: production
+  public_network_id:
+    type: string
+    label: Public Network ID
+    description: ID for the public neutron network
+  nameservers:
+    type: string
+    label: Nameservers
+    description: Nameservers
+  key_name:
+    type: string
+    label: Key Name
+    description: SSH Key Name
+  glance_image:
+    type: string
+    label: Glance Image
+    description: Glance Image to use for compute resources
+    default: rhel-guest-image-7.2-20151102.0
+  jenkins_url:
+    type: string
+    label: Jenkins URL
+    description: URL for Jenkins server
+    default: jenkins.example.com
+  jenkins_job_name:
+    type: string
+    label: Jenkins Job Name
+    description: Job Name for Jenkins build
+    default: spring-webapp
+
+resources:
+  PrivateNetwork:
+    type: OS::Neutron::Net
+    properties:
+      name: three-tier-private
+  
+  PrivateSubnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: PrivateNetwork }
+      cidr: 192.168.0.0/24
+      gateway_ip: 192.168.0.1
+      allocation_pools:
+        - start: 192.168.0.50
+          end: 192.168.0.250
+      dns_nameservers: [ { get_param: nameservers } ]
+  
+  Router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_network_id }
+  
+  RouterInterface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: Router }
+      subnet_id: { get_resource: PrivateSubnet }
+
+  Web:
+    type: OS::Nova::Server
+    properties:
+      image: rhel-guest-image-7.2-20151102.0
+      flavor: m1.small
+      key_name: { get_param: key_name }
+      networks:
+      - port: { get_resource: WebPort }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #cloud-config
+            hostname: web
+            fqdn: web.openstacklocal
+            manage_etc_hosts: false
+            write_files:
+            - path: /etc/hosts
+              content: |
+                127.0.0.1 localhost.localdomain localhost
+                192.168.0.100 web.openstacklocal web
+                192.168.0.120 app.openstacklocal app
+                192.168.0.200 db.openstacklocal db            
+            - path: /tmp/foreman-userdata.sh
+              permissions: '0755'
+              content: |
+                #!/bin/bash
+                rpm -ivh http://$satellite_fqdn/pub/katello-ca-consumer-latest.noarch.rpm
+
+                echo "Registering the System"
+                subscription-manager register --org="$satellite_org" --name="web.openstacklocal" --activationkey="$satellite_key"
+
+                echo "Installing Katello Agent"
+                yum -t -y -e 0 install katello-agent
+
+                echo "Installing Puppet"
+                yum install -y puppet
+                cat > /etc/puppet/puppet.conf << EOF
+                [main]
+                vardir = /var/lib/puppet
+                logdir = /var/log/puppet
+                rundir = /var/run/puppet
+                ssldir = \$vardir/ssl
+
+                [agent]
+                pluginsync      = true
+                report          = true
+                ignoreschedules = true
+                daemon          = false
+                ca_server       = $satellite_fqdn
+                certname        = web.openstacklocal
+                environment     = $puppet_environment
+                server          = $satellite_fqdn
+
+                EOF
+
+                # Setup puppet to run on system reboot
+                /sbin/chkconfig --level 345 puppet on
+
+                /usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag --server $satellite_fqdn --no-daemonize
+                /sbin/service puppet start
+            - path: /tmp/install-haproxy.sh
+              permissions: '0755'
+              content: |
+                #!/bin/bash
+
+                yum -y install haproxy
+                yum -y install haproxy
+                cat > /etc/haproxy/haproxy.cfg <<EOF
+                global
+                    log         127.0.0.1 local2
+                    chroot      /var/lib/haproxy
+                    pidfile     /var/run/haproxy.pid
+                    maxconn     4000
+                    user        haproxy
+                    group       haproxy
+                    daemon
+                    stats socket /var/lib/haproxy/stats
+
+                defaults
+                    mode                    http
+                    log                     global
+                    option                  httplog
+                    option                  dontlognull
+                    option http-server-close
+                    option forwardfor       except 127.0.0.0/8
+                    option                  redispatch
+                    retries                 3
+                    timeout http-request    10s
+                    timeout queue           1m
+                    timeout connect         10s
+                    timeout client          1m
+                    timeout server          1m
+                    timeout http-keep-alive 10s
+                    timeout check           10s
+                    maxconn                 3000
+
+                frontend web *:80
+                    mode http
+                    default_backend app
+
+                backend app
+                    balance roundrobin
+                    server app 192.168.0.120:8080 check
+                EOF
+
+                systemctl enable haproxy
+                systemctl start haproxy
+            phone_home:
+              url: http://$satellite_fqdn:80/unattended/built
+              post: []
+              tries: 10
+            phone_home:
+              url: http://$satellite_fqdn:80/unattended/built
+              post: []
+              tries: 10
+            runcmd:
+              - [ cloud-init-per, once, foreman-userdata, /tmp/foreman-userdata.sh ]
+              - [ cloud-init-per, once, install-haproxy, /tmp/install-haproxy.sh ]
+            output: {all: '| tee -a /root/install.userdata.log'}
+          params:
+            $satellite_fqdn: {get_param: satellite_fqdn}
+            $satellite_org: {get_param: satellite_org}
+            $satellite_key: {get_param: satellite_key}
+            $puppet_environment: {get_param: puppet_environment}
+
+  WebPort:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: PrivateNetwork }
+      fixed_ips:
+        - subnet_id: { get_resource: PrivateSubnet }
+          ip_address: 192.168.0.100
+      
+  
+  WebFloatingIP:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_network_id }
+      port_id: { get_resource: WebPort }
+  
+  App:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: glance_image }
+      flavor: m1.medium
+      key_name: { get_param: key_name }
+      networks:
+      - port: { get_resource: AppPort }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #cloud-config
+            hostname: app
+            fqdn: app.openstacklocal
+            manage_etc_hosts: true
+            write_files:
+            - path: /etc/hosts
+              content: |
+                127.0.0.1 localhost.localdomain localhost
+                192.168.0.100 web.openstacklocal web
+                192.168.0.120 app.openstacklocal app
+                192.168.0.200 db.openstacklocal db
+            - path: /tmp/foreman-userdata.sh
+              permissions: '0755'
+              content: |
+                #!/bin/bash
+                rpm -ivh http://$satellite_fqdn/pub/katello-ca-consumer-latest.noarch.rpm
+                
+                echo "Registering the System"
+                subscription-manager register --org="$satellite_org" --name="app.openstacklocal" --activationkey="$satellite_key"
+                
+                echo "Installing Katello Agent"
+                yum -t -y -e 0 install katello-agent
+                
+                echo "Installing Puppet"
+                yum install -y puppet
+                cat > /etc/puppet/puppet.conf << EOF
+                [main]
+                vardir = /var/lib/puppet
+                logdir = /var/log/puppet
+                rundir = /var/run/puppet
+                ssldir = \$vardir/ssl
+                
+                [agent]
+                pluginsync      = true
+                report          = true
+                ignoreschedules = true
+                daemon          = false
+                ca_server       = $satellite_fqdn
+                certname        = app.openstacklocal
+                environment     = $puppet_environment
+                server          = $satellite_fqdn
+                
+                EOF
+                
+                # Setup puppet to run on system reboot
+                /sbin/chkconfig --level 345 puppet on
+                
+                /usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag --server $satellite_fqdn --no-daemonize
+                /sbin/service puppet start
+            - path: /tmp/install-jboss.sh
+              permissions: '0755'
+              content: |
+                #!/bin/bash
+                yum -y install unzip java-1.8.0-openjdk-devel apr-devel
+                yum -y install unzip java-1.8.0-openjdk-devel apr-devel
+                
+                cd /opt/ && curl http://foreman.rhos.phx.salab.redhat.com/pub/jboss-eap-7.0.0.zip > jboss-eap-7.0.0.zip
+                cd /opt/ && unzip jboss-eap-7.0.0.zip
+                
+                curl http://$jenkins_url/job/$jenkins_job_name/lastSuccessfulBuild/artifact/target/spring-webapp.war > /opt/jboss-eap-7.0/standalone/deployments/spring-webapp.war
+                /opt/jboss-eap-7.0/bin/standalone.sh -b 0.0.0.0
+            
+            phone_home:
+              url: http://$satellite_fqdn:80/unattended/built
+              post: []
+              tries: 10
+            runcmd:
+              - [ cloud-init-per, once, foreman-userdata, /tmp/foreman-userdata.sh ]
+              - [ cloud-init-per, once, install-jboss, /tmp/install-jboss.sh ]
+            output: {all: '| tee -a /root/install.userdata.log'}
+          params:
+            $satellite_fqdn: {get_param: satellite_fqdn}
+            $satellite_org: {get_param: satellite_org}
+            $satellite_key: {get_param: satellite_key}
+            $puppet_environment: {get_param: puppet_environment}
+            $jenkins_url: {get_param: jenkins_url}
+            $jenkins_job_name: {get_param: jenkins_job_name}
+  
+  
+  AppPort:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: PrivateNetwork }
+      fixed_ips:
+        - subnet_id: { get_resource: PrivateSubnet }
+          ip_address: 192.168.0.120
+
+  DB:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: glance_image }
+      flavor: m1.medium
+      key_name: { get_param: key_name }
+      networks:
+      - port: { get_resource: DbPort }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #cloud-config
+            hostname: db
+            fqdn: db.openstacklocal
+            manage_etc_hosts: true
+            write_files:
+            - path: /tmp/foreman-userdata.sh
+              permissions: '0755'
+              content: |
+                #!/bin/bash
+                rpm -ivh http://$satellite_fqdn/pub/katello-ca-consumer-latest.noarch.rpm
+                
+                echo "Registering the System"
+                subscription-manager register --org="$satellite_org" --name="db.openstacklocal" --activationkey="$satellite_key"
+                
+                echo "Installing Katello Agent"
+                yum -t -y -e 0 install katello-agent
+                
+                echo "Installing Puppet"
+                yum install -y puppet
+                cat > /etc/puppet/puppet.conf << EOF
+                [main]
+                vardir = /var/lib/puppet
+                logdir = /var/log/puppet
+                rundir = /var/run/puppet
+                ssldir = \$vardir/ssl
+                
+                [agent]
+                pluginsync      = true
+                report          = true
+                ignoreschedules = true
+                daemon          = false
+                ca_server       = $satellite_fqdn
+                certname        = db.openstacklocal
+                environment     = $puppet_environment
+                server          = $satellite_fqdn
+                
+                EOF
+                
+                # Setup puppet to run on system reboot
+                /sbin/chkconfig --level 345 puppet on
+                
+                /usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag --server $satellite_fqdn --no-daemonize
+                /sbin/service puppet start
+            phone_home:
+              url: http://$satellite_fqdn:80/unattended/built
+              post: []
+              tries: 10
+            runcmd:
+              - [ cloud-init-per, once, foreman-userdata, /tmp/foreman-userdata.sh ]
+            output: {all: '| tee -a /root/install.userdata.log'}
+          params:
+            $satellite_fqdn: {get_param: satellite_fqdn}
+            $satellite_org: {get_param: satellite_org}
+            $satellite_key: {get_param: satellite_key}
+            $puppet_environment: {get_param: puppet_environment}
+  
+  
+  DbPort:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: PrivateNetwork }
+      fixed_ips:
+        - subnet_id: { get_resource: PrivateSubnet }
+          ip_address: 192.168.0.200
+
