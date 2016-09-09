@@ -81,7 +81,7 @@
   - name: wait for ssh on web
     command: >
       ssh -o BatchMode=yes -oStrictHostKeyChecking=no
-      cloud-user@{{web.server.public_v4}} true
+      cloud-user@{{spring-webapp-ansible-web.server.public_v4}} true
     register: result
     until: result|success
     retries: 30
@@ -89,7 +89,7 @@
   - name: wait for ssh on app
     command: >
       ssh -o BatchMode=yes -oStrictHostKeyChecking=no
-      cloud-user@{{app.server.public_v4}} true
+      cloud-user@{{spring-webapp-ansible-app.server.public_v4}} true
     register: result
     until: result|success
     retries: 30
@@ -97,7 +97,7 @@
   - name: wait for ssh on db
     command: >
       ssh -o BatchMode=yes -oStrictHostKeyChecking=no
-      cloud-user@{{db.server.public_v4}} true
+      cloud-user@{{spring-webapp-ansible-db.server.public_v4}} true
     register: result
     until: result|success
     retries: 30
@@ -105,13 +105,13 @@
   
   - name: add web server to inventory
     add_host: name=web groups=webservers,provisioned
-              ansible_host={{ web.server.public_v4 }}
+              ansible_host={{ spring-webapp-ansible-web.server.public_v4 }}
   - name: add app server to inventory
     add_host: name=app groups=appservers,provisioned
-              ansible_host={{ app.server.public_v4 }}
+              ansible_host={{ spring-webapp-ansible-app.server.public_v4 }}
   - name: add db server to inventory
     add_host: name=db groups=dbservers,provisioned
-              ansible_host={{ db.server.public_v4 }}
+              ansible_host={{ spring-webapp-ansible-db.server.public_v4 }}
   
 - name: Register provisioned systems to Satellite
   hosts: provisioned
