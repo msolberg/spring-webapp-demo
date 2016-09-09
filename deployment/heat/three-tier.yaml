@@ -17,11 +17,6 @@ parameters:
     type: string
     label: Satellite Activation Key
     description: Satellite Activation Key
-  puppet_environment:
-    type: string
-    label: Puppet Environment
-    description: Puppet Environment
-    default: production
   public_network_id:
     type: string
     label: Public Network ID
@@ -113,33 +108,6 @@ resources:
 
                 echo "Installing Katello Agent"
                 yum -t -y -e 0 install katello-agent
-
-                echo "Installing Puppet"
-                yum install -y puppet
-                cat > /etc/puppet/puppet.conf << EOF
-                [main]
-                vardir = /var/lib/puppet
-                logdir = /var/log/puppet
-                rundir = /var/run/puppet
-                ssldir = \$vardir/ssl
-
-                [agent]
-                pluginsync      = true
-                report          = true
-                ignoreschedules = true
-                daemon          = false
-                ca_server       = $satellite_fqdn
-                certname        = web.openstacklocal
-                environment     = $puppet_environment
-                server          = $satellite_fqdn
-
-                EOF
-
-                # Setup puppet to run on system reboot
-                /sbin/chkconfig --level 345 puppet on
-
-                /usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag --server $satellite_fqdn --no-daemonize
-                /sbin/service puppet start
             - path: /tmp/install-haproxy.sh
               permissions: '0755'
               content: |
@@ -254,33 +222,6 @@ resources:
                 
                 echo "Installing Katello Agent"
                 yum -t -y -e 0 install katello-agent
-                
-                echo "Installing Puppet"
-                yum install -y puppet
-                cat > /etc/puppet/puppet.conf << EOF
-                [main]
-                vardir = /var/lib/puppet
-                logdir = /var/log/puppet
-                rundir = /var/run/puppet
-                ssldir = \$vardir/ssl
-                
-                [agent]
-                pluginsync      = true
-                report          = true
-                ignoreschedules = true
-                daemon          = false
-                ca_server       = $satellite_fqdn
-                certname        = app.openstacklocal
-                environment     = $puppet_environment
-                server          = $satellite_fqdn
-                
-                EOF
-                
-                # Setup puppet to run on system reboot
-                /sbin/chkconfig --level 345 puppet on
-                
-                /usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag --server $satellite_fqdn --no-daemonize
-                /sbin/service puppet start
             - path: /tmp/install-jboss.sh
               permissions: '0755'
               content: |
@@ -347,33 +288,6 @@ resources:
                 
                 echo "Installing Katello Agent"
                 yum -t -y -e 0 install katello-agent
-                
-                echo "Installing Puppet"
-                yum install -y puppet
-                cat > /etc/puppet/puppet.conf << EOF
-                [main]
-                vardir = /var/lib/puppet
-                logdir = /var/log/puppet
-                rundir = /var/run/puppet
-                ssldir = \$vardir/ssl
-                
-                [agent]
-                pluginsync      = true
-                report          = true
-                ignoreschedules = true
-                daemon          = false
-                ca_server       = $satellite_fqdn
-                certname        = db.openstacklocal
-                environment     = $puppet_environment
-                server          = $satellite_fqdn
-                
-                EOF
-                
-                # Setup puppet to run on system reboot
-                /sbin/chkconfig --level 345 puppet on
-                
-                /usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag --server $satellite_fqdn --no-daemonize
-                /sbin/service puppet start
             phone_home:
               url: http://$satellite_fqdn:80/unattended/built
               post: []

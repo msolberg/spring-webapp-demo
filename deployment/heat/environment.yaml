@@ -3,7 +3,6 @@ parameters:
   satellite_fqdn: satellite.example.com
   satellite_org: default
   satellite_key: SOE
-  puppet_environment: production
   public_network_id: 6832642a-00c0-494c-b513-94c60ee435f1
   nameservers: 10.3.76.2
   key_name: msolberg
