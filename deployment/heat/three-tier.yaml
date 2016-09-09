@@ -171,7 +171,6 @@ resources:
             $satellite_fqdn: {get_param: satellite_fqdn}
             $satellite_org: {get_param: satellite_org}
             $satellite_key: {get_param: satellite_key}
-            $puppet_environment: {get_param: puppet_environment}
 
   WebPort:
     type: OS::Neutron::Port
@@ -247,7 +246,6 @@ resources:
             $satellite_fqdn: {get_param: satellite_fqdn}
             $satellite_org: {get_param: satellite_org}
             $satellite_key: {get_param: satellite_key}
-            $puppet_environment: {get_param: puppet_environment}
             $jenkins_url: {get_param: jenkins_url}
             $jenkins_job_name: {get_param: jenkins_job_name}
   
@@ -299,7 +297,6 @@ resources:
             $satellite_fqdn: {get_param: satellite_fqdn}
             $satellite_org: {get_param: satellite_org}
             $satellite_key: {get_param: satellite_key}
-            $puppet_environment: {get_param: puppet_environment}
   
   
   DbPort:
