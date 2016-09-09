@@ -29,7 +29,7 @@
       fixed_ips:
         - ip_address: 192.168.0.100
   - os_server:
-      name: spring-webapp-ansible-web
+      name: spring_webapp_ansible_web
       state: present
       image: "{{ glance_image }}"
       flavor: m1.small
@@ -40,14 +40,14 @@
       wait: yes
       meta:
         hostname: web.localdomain
-    register: spring-webapp-ansible-web
+    register: spring_webapp_ansible_web
   - os_port:
       name: app-port
       network: spring-demo-private
       fixed_ips:
         - ip_address: 192.168.0.120
   - os_server:
-      name: spring-webapp-ansible-app
+      name: spring_webapp_ansible_app
       state: present
       image: "{{ glance_image }}"
       flavor: m1.medium
@@ -58,14 +58,14 @@
       wait: yes
       meta:
         hostname: app.localdomain
-    register: spring-webapp-ansible-app
+    register: spring_webapp_ansible_app
   - os_port:
       name: db-port
       network: spring-demo-private
       fixed_ips:
         - ip_address: 192.168.0.200
   - os_server:
-      name: spring-webapp-ansible-db
+      name: spring_webapp_ansible_db
       state: present
       image: "{{ glance_image }}"
       flavor: m1.medium
@@ -76,12 +76,12 @@
       wait: yes
       meta:
         hostname: db.localdomain
-    register: spring-webapp-ansible-db
+    register: spring_webapp_ansible_db
 
   - name: wait for ssh on web
     command: >
       ssh -o BatchMode=yes -oStrictHostKeyChecking=no
-      cloud-user@{{spring-webapp-ansible-web.server.public_v4}} true
+      cloud-user@{{spring_webapp_ansible_web.server.public_v4}} true
     register: result
     until: result|success
     retries: 30
@@ -89,7 +89,7 @@
   - name: wait for ssh on app
     command: >
       ssh -o BatchMode=yes -oStrictHostKeyChecking=no
-      cloud-user@{{spring-webapp-ansible-app.server.public_v4}} true
+      cloud-user@{{spring_webapp_ansible_app.server.public_v4}} true
     register: result
     until: result|success
     retries: 30
@@ -97,7 +97,7 @@
   - name: wait for ssh on db
     command: >
       ssh -o BatchMode=yes -oStrictHostKeyChecking=no
-      cloud-user@{{spring-webapp-ansible-db.server.public_v4}} true
+      cloud-user@{{spring_webapp_ansible_db.server.public_v4}} true
     register: result
     until: result|success
     retries: 30
@@ -105,13 +105,13 @@
   
   - name: add web server to inventory
     add_host: name=web groups=webservers,provisioned
-              ansible_host={{ spring-webapp-ansible-web.server.public_v4 }}
+              ansible_host={{ spring_webapp_ansible_web.server.public_v4 }}
   - name: add app server to inventory
     add_host: name=app groups=appservers,provisioned
-              ansible_host={{ spring-webapp-ansible-app.server.public_v4 }}
+              ansible_host={{ spring_webapp_ansible_app.server.public_v4 }}
   - name: add db server to inventory
     add_host: name=db groups=dbservers,provisioned
-              ansible_host={{ spring-webapp-ansible-db.server.public_v4 }}
+              ansible_host={{ spring_webapp_ansible_db.server.public_v4 }}
   
 - name: Register provisioned systems to Satellite
   hosts: provisioned
