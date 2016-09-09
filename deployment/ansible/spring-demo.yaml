@@ -29,7 +29,7 @@
       fixed_ips:
         - ip_address: 192.168.0.100
   - os_server:
-      name: web
+      name: spring-webapp-ansible-web
       state: present
       image: "{{ glance_image }}"
       flavor: m1.small
@@ -40,14 +40,14 @@
       wait: yes
       meta:
         hostname: web.localdomain
-    register: web
+    register: spring-webapp-ansible-web
   - os_port:
       name: app-port
       network: spring-demo-private
       fixed_ips:
         - ip_address: 192.168.0.120
   - os_server:
-      name: app
+      name: spring-webapp-ansible-app
       state: present
       image: "{{ glance_image }}"
       flavor: m1.medium
@@ -58,14 +58,14 @@
       wait: yes
       meta:
         hostname: app.localdomain
-    register: app
+    register: spring-webapp-ansible-app
   - os_port:
       name: db-port
       network: spring-demo-private
       fixed_ips:
         - ip_address: 192.168.0.200
   - os_server:
-      name: db
+      name: spring-webapp-ansible-db
       state: present
       image: "{{ glance_image }}"
       flavor: m1.medium
@@ -76,7 +76,7 @@
       wait: yes
       meta:
         hostname: db.localdomain
-    register: db
+    register: spring-webapp-ansible-db
 
   - name: wait for ssh on web
     command: >
