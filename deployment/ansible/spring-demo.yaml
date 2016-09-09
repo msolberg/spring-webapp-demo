@@ -6,7 +6,7 @@
     public_network_id: 6832642a-00c0-494c-b513-94c60ee435f1
     nameservers: 10.3.76.2
     key_name: msolberg
-    glance_image: rhel-guest-image-7.2-20151102.0
+    glance_image: rhel-guest-image-7.2-20160302.0
   tasks:
   - os_network:
       name: spring-demo-private

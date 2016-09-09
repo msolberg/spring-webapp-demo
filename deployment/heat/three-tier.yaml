@@ -38,7 +38,7 @@ parameters:
     type: string
     label: Glance Image
     description: Glance Image to use for compute resources
-    default: rhel-guest-image-7.2-20151102.0
+    default: rhel-guest-image-7.2-20160302.0
   jenkins_url:
     type: string
     label: Jenkins URL
