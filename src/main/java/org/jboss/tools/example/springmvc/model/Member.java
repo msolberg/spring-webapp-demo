@@ -58,6 +58,7 @@ public class Member implements Serializable {
     @NotNull
     @Size(min = 10, max = 12)
     @Digits(fraction = 0, integer = 12, message = "Incorrect Format, valid e.g. 121212121212")
+    @Pattern(regexp = ".*(?<!8675309)$", message = "Phone number cannot contain 8675309")
     @Column(name = "phone_number")
     private String phoneNumber;
 

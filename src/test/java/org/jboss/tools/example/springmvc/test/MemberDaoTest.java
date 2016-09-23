@@ -18,6 +18,8 @@ package org.jboss.tools.example.springmvc.test;
 
 import java.util.List;
 
+import javax.validation.ConstraintViolationException;
+
 import org.jboss.tools.example.springmvc.data.MemberDao;
 import org.jboss.tools.example.springmvc.model.Member;
 
@@ -97,4 +99,21 @@ public class MemberDaoTest {
         assertEquals("2125552121", newMember.getPhoneNumber());
         return;
     }
+    
+    @Test
+    public void test8675309() {
+        try {
+        	Member member = new Member();
+            member.setEmail("jenny@mailinator.com");
+            member.setName("Jenny");
+            member.setPhoneNumber("9198675309");
+            memberDao.register(member);
+        } catch(ConstraintViolationException ex) {
+        	return;
+        }
+        /*Expected Violation*/
+        fail("Didn't catch a ConstraintViolation");
+        return;
+    }
+    
 }
