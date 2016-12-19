@@ -126,6 +126,14 @@
       yum: name=http://{{ satellite_fqdn }}/pub/katello-ca-consumer-latest.noarch.rpm state=present
     - name: register system
       redhat_subscription: activationkey={{ satellite_key }} org_id={{ satellite_org }}
+    - name: install Satellite agents
+      yum: name=katello-agent,puppet state=present
+    - name: start katello agent
+      service: name=goferd state=started enabled=yes
+    - name: set puppet configuration
+      template: src=templates/puppet.conf.j2 dest=/etc/puppet/puppet.conf mode=0644
+    - name: run puppet
+      puppet: 
 
 - name: Configure web servers
   hosts: webservers
