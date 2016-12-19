@@ -148,8 +148,6 @@
   sudo: yes
   vars:
     satellite_fqdn: satellite.example.com
-    jenkins_url: jenkins.example.com
-    jenkins_job_name: spring-webapp
   tasks:
     - name: install jboss dependencies
       yum: name=unzip,java-1.8.0-openjdk-devel,apr-devel
@@ -170,7 +168,7 @@
     - name: start jboss
       service: name=jboss enabled=yes state=started
     - name: deploy war file
-      get_url: url=http://{{ jenkins_url }}/job/{{ jenkins_job_name }}/lastSuccessfulBuild/artifact/target/spring-webapp.war dest=/opt/jboss-eap-7.0/standalone/deployments/spring-webapp.war force=yes
+      copy: src=../../target/spring-webapp.war dest=/opt/jboss-eap-7.0/standalone/deployments/
 
 - name: Configure db servers
   hosts: dbservers
