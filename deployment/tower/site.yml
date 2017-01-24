@@ -1,0 +1,8 @@
+---
+# This playbook deploys the spring demo application onto a set of servers
+
+# Apply common configuration to all hosts
+- hosts: all
+
+  roles:
+  - common

@@ -1,0 +1,6 @@
+---
+# Common variables
+
+satellite_fqdn: foreman.rhos.phx.salab.redhat.com
+satellite_key: SOE
+satellite_org: salab
