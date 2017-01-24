@@ -6,3 +6,18 @@
 
   roles:
   - common
+
+# Apply jboss configuration to app servers
+- hosts: appservers
+  
+  roles:
+  - jboss
+
+# Deploy WAR file to app servers
+- hosts: appservers
+  
+  tasks:
+    - name: deploy war file
+      get_url:
+        url: http://jenkins.rdu.salab.redhat.com:8080/job/spring-webapp-demo/lastSuccessfulBuild/artifact/target/spring-webapp.war
+        dest: /opt/jboss-eap-7.0/standalone/deployments/spring-webapp.war
