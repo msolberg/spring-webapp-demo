@@ -21,3 +21,9 @@
       get_url:
         url: http://jenkins.rdu.salab.redhat.com:8080/job/spring-webapp-demo/lastSuccessfulBuild/artifact/target/spring-webapp.war
         dest: /opt/jboss-eap-7.0/standalone/deployments/spring-webapp.war
+
+# Apply load balancer configuration to load balancers
+- hosts: lbservers
+  
+  roles:
+  - haproxy
