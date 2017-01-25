@@ -1,0 +1,38 @@
+---
+# This playbook will update the application servers behind the load balancer
+# one at a time.
+
+- hosts: appservers
+  serial: 1
+
+# These tasks run before applying the update to each host
+  pre_tasks:
+  - name: pull the server from the load balancer
+    haproxy: 'state=disabled backend=app host={{ inventory_hostname }} socket=/var/lib/haproxy/stats'
+    delegate_to: "{{ item }}"
+    with_items: groups.lbservers
+  
+  roles:
+  - common
+  - jboss
+  
+  tasks:
+  - name: deploy new war file
+    get_url:
+      url: http://jenkins.rdu.salab.redhat.com:8080/job/spring-webapp-demo/lastSuccessfulBuild/artifact/target/spring-webapp.war
+      dest: /opt/jboss-eap-7.0/standalone/deployments/spring-webapp.war
+      force: yes
+  
+  - name: restart jboss
+    service: name=jboss enabled=yes state=restarted
+
+  
+  post_tasks:
+  - name: wait for jboss to restart
+    wait_for: 'host={{ inventory_hostname }} port=8080 state=started timeout=200'
+  
+  - name: put the server back in the load balancer
+    haproxy: 'state=enabled backend=app host={{ inventory_hostname }} socket=/var/lib/haproxy/stats'
+    delegate_to: "{{ item }}"
+    with_items: groups.lbservers
+    
