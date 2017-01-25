@@ -29,7 +29,8 @@
   
   post_tasks:
   - name: wait for jboss to restart
-    local_action: wait_for 'host={{ inventory_hostname }} port=8080 state=started timeout=200'
+    local_action: wait_for host={{ inventory_hostname }} port=8080 state=started timeout=200
+    sudo: false
   
   - name: put the server back in the load balancer
     haproxy: 'state=enabled backend=app host={{ inventory_hostname }} socket=/var/lib/haproxy/stats'
