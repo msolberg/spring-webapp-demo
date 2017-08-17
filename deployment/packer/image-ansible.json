@@ -1,0 +1,22 @@
+{
+  "variables": {
+    "satellite_fqdn": "",
+    "satellite_org": "",
+    "satellite_key": ""
+  },
+  "builders": [{
+    "type": "openstack",
+    "flavor": "m1.medium",
+    "image_name": "spring-webapp-demo",
+    "source_image_name": "rhel-guest-image-7.3-35",
+    "ssh_username": "cloud-user",
+    "networks": ["272da165-00b9-4d2b-8a20-5231efb4ca43"],
+    "security_groups": ["default"],
+    "floating_ip_pool": "vlan177"
+  }],
+  "provisioners": [{
+    "type": "ansible",
+    "playbook_file": "./deploy.yaml",
+    "extra_arguments": [ "--extra-vars", "satellite_fqdn={{user `satellite_fqdn`}} satellite_org={{user `satellite_org`}} satellite_key={{user `satellite_key`}}"]
+  }]
+}

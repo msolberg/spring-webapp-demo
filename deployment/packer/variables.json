@@ -1,0 +1,6 @@
+{
+  "satellite_fqdn": "satellite.example.com",
+  "satellite_org": "default",
+  "satellite_key": "default"
+}
+

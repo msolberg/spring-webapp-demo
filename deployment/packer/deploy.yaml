@@ -1,0 +1,38 @@
+- name: Install Spring WebApp Demo
+  hosts: all
+  remote_user: cloud-user
+  sudo: yes
+  vars:
+    satellite_fqdn: satellite.example.com
+    satellite_org: default
+    satellite_key: SOE
+  tasks:
+    - name: download satellite certs
+      yum: name=http://{{ satellite_fqdn }}/pub/katello-ca-consumer-latest.noarch.rpm state=present
+    - name: register system
+      redhat_subscription: activationkey={{ satellite_key }} org_id={{ satellite_org }}
+    - name: install jboss dependencies
+      yum: name=unzip,java-1.8.0-openjdk-devel,apr-devel
+    - name: download jboss
+      unarchive: src=http://{{ satellite_fqdn }}/pub/jboss-eap-7.0.0.zip dest=/opt creates=/opt/jboss-eap-7.0 copy=no
+    - name: create symlink
+      file: path=/opt/jboss-eap state=link src=/opt/jboss-eap-7.0
+    - name: add jboss group
+      group: name=jboss
+    - name: add jboss user
+      user: name=jboss group=jboss home=/opt/jboss-eap
+    - name: copy startup script
+      command: chdir=/opt/jboss-eap cp bin/init.d/jboss-eap-rhel.sh /etc/init.d/jboss creates=/etc/init.d/jboss
+    - name: copy config file
+      template: src=templates/jboss-eap.conf.j2 dest=/etc/default/jboss-eap.conf mode=0644
+    - name: set ownership of jboss-eap install
+      file: path=/opt/jboss-eap/ owner=jboss group=jboss state=directory recurse=yes
+    - name: enable jboss
+      command: chkconfig --add jboss
+    - name: enable jboss on startup
+      command: chkconfig jboss on
+    - name: deploy war file
+      copy: src=../../target/spring-webapp.war dest=/opt/jboss-eap-7.0/standalone/deployments/
+    - name: clean up
+      command: subscription-manager unregister
+
